@@ -1,31 +1,42 @@
-{ pkgs, ... }:
+{ pkgs, inputs, ... }:
 
-let npm = pkgs.nodePackages.npm;
-in {
-  enterShell = ''
-    echo "Welcome to my awesome dev env 🚀"
-  '';
+let
+  parts = inputs.devenv-parts.lib;
+  npm = pkgs.nodePackages.npm;
+  postgres = parts.postgres {
+    package = pkgs.postgresql_15;
+    port = 6543;
+    db = "my_db";
+    user = "my_db_admin";
+    password = "SeCuRe";
 
-  scripts = {
-    sneaky-movies.exec =
-      "${pkgs.inetutils}/bin/telnet telehack.com | ${pkgs.lolcat}/bin/lolcat";
   };
+  env = {
+    enterShell = ''
+      echo "Welcome to my awesome dev env 🚀"
+    '';
 
-  packages = with pkgs; [ nixpkgs-fmt npm scala-cli ];
+    scripts = {
+      sneaky-movies.exec =
+        "${pkgs.inetutils}/bin/telnet telehack.com | ${pkgs.lolcat}/bin/lolcat";
+    };
 
-  languages = {
-    java = {
-      enable = true;
-      jdk.package = pkgs.jdk20;
+    packages = with pkgs; [ nixpkgs-fmt npm scala-cli ];
+
+    languages = {
+      java = {
+        enable = true;
+        jdk.package = pkgs.jdk20;
+      };
+      javascript = {
+        enable = true;
+        package = pkgs.nodejs_18;
+        npm.install.enable = true;
+      };
     };
-    javascript = {
-      enable = true;
-      package = pkgs.nodejs_18;
-      npm.install.enable = true;
-    };
+
+    processes.server.exec = "${npm}/bin/npm run server";
+
+    pre-commit.hooks = { nixfmt.enable = true; };
   };
-
-  processes.server.exec = "${npm}/bin/npm run server";
-
-  pre-commit.hooks = { nixfmt.enable = true; };
-}
+in parts.mergeAll [ postgres env ]
